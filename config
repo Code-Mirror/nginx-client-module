@@ -1,4 +1,4 @@
-ngx_addon_name=ngx_client_module
+ngx_addon_name=ngx_http_client_module
 
 if test -n "$ngx_module_link"; then
     ngx_module_type=CORE
