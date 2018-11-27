@@ -1,6 +1,20 @@
 ngx_addon_name=ngx_client_module
 
-
+if test -n "$ngx_module_link"; then
+    ngx_module_type=CORE
+    ngx_module_name=$ngx_addon_name
+    ngx_module_incs=
+    ngx_module_deps="                                               \
+               $ngx_addon_dir/ngx_client.h                          \
+               $ngx_addon_dir/ngx_http_client.h                     \
+    "
+    ngx_module_srcs="                                               \
+               $ngx_addon_dir/ngx_client.c                          \
+               $ngx_addon_dir/ngx_http_client.c                     \
+    "
+    ngx_module_libs=
+    . auto/module
+else
 CORE_MODULES="$CORE_MODULES                                         \
              ngx_http_client_module                                 \
              "
@@ -14,5 +28,5 @@ NGX_ADDON_DEPS="$NGX_ADDON_DEPS                                     \
                $ngx_addon_dir/ngx_client.h                          \
                $ngx_addon_dir/ngx_http_client.h                     \
                "
-
+fi
 CFLAGS="$CFLAGS -I $ngx_addon_dir"
