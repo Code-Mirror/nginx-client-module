@@ -16,6 +16,7 @@ if test -n "$ngx_module_link"; then
     . auto/module
 else
 CORE_MODULES="$CORE_MODULES                                         \
+             ngx_client_module                                      \
              ngx_http_client_module                                 \
              "
 
