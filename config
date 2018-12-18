@@ -7,10 +7,24 @@ if test -n "$ngx_module_link"; then
     ngx_module_deps="                                               \
                $ngx_addon_dir/ngx_client.h                          \
                $ngx_addon_dir/ngx_http_client.h                     \
+               $ngx_addon_dir/ngx_toolkit_misc.h                    \
+               $ngx_addon_dir/ngx_event_resolver.h                  \
+               $ngx_addon_dir/ngx_dynamic_resolver.h                \
+               $ngx_addon_dir/ngx_rbuf.h                            \
+               $ngx_addon_dir/ngx_poold.h                           \
+               $ngx_addon_dir/ngx_event_timer_module.h              \
+               $ngx_addon_dir/ngx_map.h                             \
     "
     ngx_module_srcs="                                               \
                $ngx_addon_dir/ngx_client.c                          \
                $ngx_addon_dir/ngx_http_client.c                     \
+               $ngx_addon_dir/ngx_toolkit_misc.c                    \
+               $ngx_addon_dir/ngx_event_resolver.c                  \
+               $ngx_addon_dir/ngx_dynamic_resolver.c                \
+               $ngx_addon_dir/ngx_rbuf.c                            \
+               $ngx_addon_dir/ngx_poold.c                           \
+               $ngx_addon_dir/ngx_event_timer_module.c              \
+               $ngx_addon_dir/ngx_map.c                             \
     "
     ngx_module_libs=
     . auto/module
@@ -23,11 +37,25 @@ CORE_MODULES="$CORE_MODULES                                         \
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS                                     \
                $ngx_addon_dir/ngx_client.c                          \
                $ngx_addon_dir/ngx_http_client.c                     \
+               $ngx_addon_dir/ngx_toolkit_misc.c                    \
+               $ngx_addon_dir/ngx_event_resolver.c                  \
+               $ngx_addon_dir/ngx_dynamic_resolver.c                \
+               $ngx_addon_dir/ngx_rbuf.c                            \
+               $ngx_addon_dir/ngx_poold.c                           \
+               $ngx_addon_dir/ngx_event_timer_module.c              \
+               $ngx_addon_dir/ngx_map.c                             \
                "
 
 NGX_ADDON_DEPS="$NGX_ADDON_DEPS                                     \
                $ngx_addon_dir/ngx_client.h                          \
                $ngx_addon_dir/ngx_http_client.h                     \
+               $ngx_addon_dir/ngx_toolkit_misc.h                    \
+               $ngx_addon_dir/ngx_event_resolver.h                  \
+               $ngx_addon_dir/ngx_dynamic_resolver.h                \
+               $ngx_addon_dir/ngx_rbuf.h                            \
+               $ngx_addon_dir/ngx_poold.h                           \
+               $ngx_addon_dir/ngx_event_timer_module.h              \
+               $ngx_addon_dir/ngx_map.h                             \
                "
 fi
 CFLAGS="$CFLAGS -I $ngx_addon_dir"
