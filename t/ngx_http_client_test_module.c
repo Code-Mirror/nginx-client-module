@@ -86,8 +86,6 @@ ngx_http_client_test_recv_body(void *request, ngx_http_request_t *hcr)
         for (ll = &cl; (*ll)->next; ll = &(*ll)->next);
 
         (*ll)->buf->last_buf = 1;
-
-        rc = NGX_OK;
     }
 
     ngx_http_output_filter(r, cl);
@@ -99,13 +97,14 @@ ngx_http_client_test_recv_body(void *request, ngx_http_request_t *hcr)
         return;
     }
 
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "client detach");
-
-    //ngx_http_client_detach(hcr);
-    ngx_http_client_finalize_request(hcr, 0);
+    if (rc == NGX_DONE) {
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                "all body has been read");
+        ngx_http_client_finalize_request(hcr, 0);
+    }
 
 done:
-    ngx_http_finalize_request(r, rc);
+    ngx_http_finalize_request(r, NGX_OK);
 }
 
 static void
@@ -119,7 +118,8 @@ ngx_http_client_test_recv(void *request, ngx_http_request_t *hcr)
 
     r = request;
 
-    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0, "http client test recv");
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+            "http client test recv, connection: %p", hcr->connection);
 
     r->headers_out.status = 200;
 
@@ -154,16 +154,32 @@ ngx_http_client_test_handler(ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
             "http client test handler");
 
+//    hcr = ngx_http_client_create(r->connection->log, NGX_HTTP_CLIENT_GET,
+//            &request_url, NULL, NULL, r);
     hcr = ngx_http_client_create(r->connection->log, NGX_HTTP_CLIENT_GET,
-            &request_url, NULL, NULL, r);
+            NULL, NULL, NULL, r);
+    if (ngx_http_client_set_url(hcr, &request_url, r->connection->log)
+            == NGX_ERROR)
+    {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
 
     ngx_http_client_set_read_handler(hcr, ngx_http_client_test_recv);
 
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            "http client test before send");
+
     ngx_http_client_send(hcr);
 
-    ++r->count;
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+            "http client test after send");
 
-    return NGX_DONE;
+    ngx_http_client_detach(hcr);
+    return NGX_HTTP_FORBIDDEN;
+//
+//    ++r->count;
+//
+//    return NGX_DONE;
 }
 
 

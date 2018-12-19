@@ -701,6 +701,11 @@ ngx_http_client_discarded_body(ngx_http_request_t *r)
         ngx_http_client_finalize_request(r, 1);
         return;
     }
+
+    // if detach, all http response receive, set keepalive
+    if (rc == NGX_DONE) {
+        ngx_http_client_finalize_request(r, 0);
+    }
 }
 
 
@@ -714,8 +719,6 @@ ngx_http_client_read_handler(ngx_client_session_t *s)
     ctx = r->ctx[0];
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-            "http client, read handler");
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
             "http client, read handler");
 
     if (ctx->request && ctx->read_handler) {
@@ -1453,13 +1456,11 @@ ngx_http_client_create(ngx_log_t *log, ngx_uint_t method, ngx_str_t *url,
     ngx_http_request_t         *r;
     ngx_http_client_ctx_t      *ctx;
     ngx_http_client_conf_t     *hccf;
-    ngx_client_session_t       *cs;
-    ngx_int_t                   rc;
 
     hccf = (ngx_http_client_conf_t *) ngx_get_conf(ngx_cycle->conf_ctx,
                                                    ngx_http_client_module);
 
-    pool = NGX_CREATE_POOL(4096, log);
+    pool = NGX_CREATE_POOL(4096, ngx_cycle->log);
     if (pool == NULL) {
         return NULL;
     }
@@ -1486,18 +1487,6 @@ ngx_http_client_create(ngx_log_t *log, ngx_uint_t method, ngx_str_t *url,
     /* set paras for http client */
     r->method = method;
 
-    r->request_line.data = ngx_pcalloc(pool, url->len);
-    if (r->request_line.data == NULL) {
-        goto destroy;
-    }
-    ngx_memcpy(r->request_line.data, url->data, url->len);
-    r->request_line.len = url->len;
-
-    rc = ngx_parse_request_url(&ctx->url, &r->request_line);
-    if (rc == NGX_ERROR) {
-        goto destroy;
-    }
-
     /* default version HTTP/1.1 */
     r->http_version = NGX_HTTP_CLIENT_VERSION_11;
 
@@ -1510,6 +1499,46 @@ ngx_http_client_create(ngx_log_t *log, ngx_uint_t method, ngx_str_t *url,
     ctx->header_timeout = hccf->header_timeout;
     ctx->header_buffer_size = 4096; // reserved, later will use buffers instead
 
+    if (url && ngx_http_client_set_url(r, url, log) == NGX_ERROR) {
+        // pool has been destroy in set url
+        return NULL;
+    }
+
+    return r;
+
+destroy:
+    NGX_DESTROY_POOL(pool);
+
+    return NULL;
+}
+
+
+ngx_int_t
+ngx_http_client_set_url(ngx_http_request_t *r, ngx_str_t *url, ngx_log_t *log)
+{
+    ngx_http_client_ctx_t      *ctx;
+    ngx_client_session_t       *cs;
+    ngx_int_t                   rc;
+
+    ctx = r->ctx[0];
+
+    if (ctx->session) {
+        ngx_log_error(NGX_LOG_INFO, log, 0, "http client, url has been set");
+        return NGX_OK;
+    }
+
+    r->request_line.data = ngx_pcalloc(r->pool, url->len);
+    if (r->request_line.data == NULL) {
+        goto destroy;
+    }
+    ngx_memcpy(r->request_line.data, url->data, url->len);
+    r->request_line.len = url->len;
+
+    rc = ngx_parse_request_url(&ctx->url, &r->request_line);
+    if (rc == NGX_ERROR) {
+        goto destroy;
+    }
+
     /* create session */
     cs = ngx_client_create(&ctx->url.host, NULL, 0, log);
     if (cs == NULL) {
@@ -1521,12 +1550,12 @@ ngx_http_client_create(ngx_log_t *log, ngx_uint_t method, ngx_str_t *url,
     ctx->session = cs;
     cs->data = r;
 
-    return r;
+    return NGX_OK;
 
 destroy:
-    NGX_DESTROY_POOL(pool);
+    NGX_DESTROY_POOL(r->pool);
 
-    return NULL;
+    return NGX_ERROR;
 }
 
 
