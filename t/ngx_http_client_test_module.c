@@ -68,7 +68,7 @@ ngx_http_client_test_recv_body(void *request, ngx_http_request_t *hcr)
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
             "http client test recv body");
 
-    rc = ngx_http_client_read_body(hcr, &cl, 4096);
+    rc = ngx_http_client_read_body(hcr, &cl);
 
     ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
             "http client test recv body, rc %i %i, %O",
@@ -90,7 +90,6 @@ ngx_http_client_test_recv_body(void *request, ngx_http_request_t *hcr)
 
     ngx_http_output_filter(r, cl);
 
-    ngx_put_chainbufs(cl);
     ngx_http_run_posted_requests(r->connection);
 
     if (rc == NGX_AGAIN) {
@@ -154,15 +153,24 @@ ngx_http_client_test_handler(ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
             "http client test handler");
 
-//    hcr = ngx_http_client_create(r->connection->log, NGX_HTTP_CLIENT_GET,
-//            &request_url, NULL, NULL, r);
+    // Default header Host, User-Agent, Connection(below HTTP/1.1), Accept, Date
     hcr = ngx_http_client_create(r->connection->log, NGX_HTTP_CLIENT_GET,
-            NULL, NULL, NULL, r);
-    if (ngx_http_client_set_url(hcr, &request_url, r->connection->log)
-            == NGX_ERROR)
-    {
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
+            &request_url, NULL, NULL, r);
+
+    // add Connection, delete Date, Modify Host, add new header
+    ngx_str_t                   value;
+
+    value.data = (u_char *) "World";
+    value.len = sizeof("World") - 1;
+
+    ngx_keyval_t                headers[] = {
+        { ngx_string("Host"),       ngx_string("www.test.com") },
+        { ngx_string("Connection"), ngx_string("upgrade") },
+        { ngx_string("Date"),       ngx_null_string },
+        { ngx_string("Hello"),      value },
+        { ngx_null_string,          ngx_null_string } // must end with null str
+    };
+    ngx_http_client_set_headers(hcr, headers);
 
     ngx_http_client_set_read_handler(hcr, ngx_http_client_test_recv);
 
@@ -174,12 +182,12 @@ ngx_http_client_test_handler(ngx_http_request_t *r)
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
             "http client test after send");
 
-    ngx_http_client_detach(hcr);
-    return NGX_HTTP_FORBIDDEN;
-//
-//    ++r->count;
-//
-//    return NGX_DONE;
+//    ngx_http_client_detach(hcr);
+//    return NGX_HTTP_FORBIDDEN;
+
+    ++r->count;
+
+    return NGX_DONE;
 }
 
 
