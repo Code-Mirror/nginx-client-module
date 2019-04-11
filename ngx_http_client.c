@@ -7,6 +7,7 @@
 #include "ngx_rbuf.h"
 #include "ngx_poold.h"
 #include "ngx_map.h"
+#include "ngx_timerd.h"
 
 
 static void *ngx_http_client_module_create_conf(ngx_cycle_t *cycle);
@@ -742,7 +743,8 @@ ngx_http_client_process_header(ngx_client_session_t *s)
 
             if (n == NGX_AGAIN) {
                 if (!rev->timer_set) {
-                    ngx_add_timer(rev, ctx->header_timeout);
+                    NGX_ADD_TIMER(rev, ctx->header_timeout,
+                                  offsetof(ngx_connection_t, number));
                 }
 
                 if (ngx_handle_read_event(rev, 0) != NGX_OK) {
@@ -769,7 +771,7 @@ ngx_http_client_process_header(ngx_client_session_t *s)
     s->client_recv = ngx_http_client_read_handler;
 
     if (rev->timer_set) {
-        ngx_del_timer(rev);
+        NGX_DEL_TIMER(rev, r->connection->number);
     }
 
     return ngx_http_client_read_handler(s);
@@ -812,7 +814,8 @@ ngx_http_client_process_status_line(ngx_client_session_t *s)
 
             if (n == NGX_AGAIN) {
                 if (!rev->timer_set) {
-                    ngx_add_timer(rev, ctx->header_timeout);
+                    NGX_ADD_TIMER(rev, ctx->header_timeout,
+                                  offsetof(ngx_connection_t, number));
                 }
 
                 if (ngx_handle_read_event(rev, 0) != NGX_OK) {
@@ -917,7 +920,8 @@ ngx_http_client_wait_response_handler(ngx_client_session_t *s)
 
     if (n == NGX_AGAIN) {
         if (!rev->timer_set) {
-            ngx_add_timer(rev, ctx->header_timeout);
+            NGX_ADD_TIMER(rev, ctx->header_timeout,
+                          offsetof(ngx_connection_t, number));
         }
 
         if (ngx_handle_read_event(rev, 0) != NGX_OK) {
@@ -1158,7 +1162,7 @@ ngx_http_client_send_header(ngx_client_session_t *s)
         ctx->write_handler(ctx->request, r);
     }
 
-    ngx_add_timer(rev, ctx->header_timeout);
+    NGX_ADD_TIMER(rev, ctx->header_timeout, offsetof(ngx_connection_t, number));
 
     return;
 
@@ -1435,6 +1439,37 @@ destroy:
 }
 
 
+ngx_http_cleanup_t *
+ngx_http_client_cleanup_add(ngx_http_request_t *r, size_t size)
+{
+    ngx_http_cleanup_t  *cln;
+
+    r = r->main;
+
+    cln = ngx_palloc(r->pool, sizeof(ngx_http_cleanup_t));
+    if (cln == NULL) {
+        return NULL;
+    }
+
+    if (size) {
+        cln->data = ngx_palloc(r->pool, size);
+        if (cln->data == NULL) {
+            return NULL;
+        }
+
+    } else {
+        cln->data = NULL;
+    }
+
+    cln->handler = NULL;
+    cln->next = r->cleanup;
+
+    r->cleanup = cln;
+
+    return cln;
+}
+
+
 void
 ngx_http_client_set_read_handler(ngx_http_request_t *r,
     ngx_http_client_handler_pt read_handler)
@@ -1549,7 +1584,6 @@ ngx_http_client_send(ngx_http_request_t *r)
     ctx->headers_in.content_length_n = -1;
 
     ngx_client_connect(s);
-    r->connection = s->connection;
 
     return NGX_OK;
 }
@@ -1830,7 +1864,9 @@ ngx_http_client_detach(ngx_http_request_t *r)
 
     ctx->request = NULL;
 
-    ngx_post_event(r->connection->read, &ngx_posted_events);
+    if (r->connection) {
+        ngx_post_event(r->connection->read, &ngx_posted_events);
+    }
 }
 
 
