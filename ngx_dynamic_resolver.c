@@ -95,7 +95,11 @@ ngx_event_module_t  ngx_dynamic_resolver_module_ctx = {
     ngx_dynamic_resolver_create_conf,         /* create configuration */
     ngx_dynamic_resolver_init_conf,           /* init configuration */
 
+#if (NGX_SSL && NGX_SSL_ASYNC)
+    { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
+#else
     { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL }
+#endif
 };
 
 
