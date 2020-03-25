@@ -62,4 +62,4 @@ NGX_ADDON_DEPS="$NGX_ADDON_DEPS                                     \
                $ngx_addon_dir/ngx_timerd.h                          \
                "
 fi
-CFLAGS="$CFLAGS -I $ngx_addon_dir"
+#CFLAGS="$CFLAGS -I $ngx_addon_dir"
